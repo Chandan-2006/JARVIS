@@ -1,0 +1,27 @@
+# Personal/local memory
+memory.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node dependencies
+node_modules/
+
+# Local environment/secrets
+.env
+.venv/
+venv/
+
+# Local AI/model data
+*.gguf
+*.bin
+ollama/
+
+# Logs
+*.log
+
+# OS/editor files
+Thumbs.db
+.DS_Store
+.vscode/
