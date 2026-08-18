@@ -1,19 +1,30 @@
-# Personal/local memory
+# ==========================================
+# JARVIS GITIGNORE
+# ==========================================
+
+# Personal memory
 memory.json
 
 # Python cache
 __pycache__/
 *.pyc
+*.pyo
 
-# Node dependencies
-node_modules/
-
-# Local environment/secrets
-.env
+# Virtual environments
 .venv/
 venv/
+env/
 
-# Local AI/model data
+# Node.js dependencies
+node_modules/
+
+# Environment files / secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Local AI / model files
 *.gguf
 *.bin
 ollama/
@@ -21,7 +32,16 @@ ollama/
 # Logs
 *.log
 
-# OS/editor files
+# Temporary files
+*.tmp
+*.temp
+
+# Windows / editor files
 Thumbs.db
 .DS_Store
 .vscode/
+
+# Local backup copies
+server_before_ai.py
+server_working_voice_backup.py
+server_backup.py
