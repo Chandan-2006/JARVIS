@@ -1,495 +1,1208 @@
-const status = document.getElementById("status");
-const subStatus = document.getElementById("sub-status");
-const conversation = document.getElementById("conversation");
-const voiceStatus = document.getElementById("voiceStatus");
+// ==========================================================
+// JARVIS VOICE SYSTEM
+// CLICK MIC ONCE -> LISTEN -> THINK -> SPEAK -> LISTEN AGAIN
+// ==========================================================
+
+const voiceState = document.getElementById("voiceState");
+const statusText = document.getElementById("statusText");
+const messages = document.getElementById("messages");
+const commandInput = document.getElementById("commandInput");
+const sendButton = document.getElementById("sendButton");
+const micButton = document.getElementById("micButton");
+const voiceSystem = document.getElementById("voiceSystem");
+
+
+// ==========================================================
+// VARIABLES
+// ==========================================================
+
+let recognition = null;
+
+let voiceEnabled = false;
+let listening = false;
+let speaking = false;
+let processing = false;
+let starting = false;
+
+let restartTimer = null;
+
+
+// ==========================================================
+// CORE MODE
+// ==========================================================
+
+function setCoreMode(mode) {
+
+    document.body.classList.remove(
+        "jarvis-listening",
+        "jarvis-thinking",
+        "jarvis-speaking",
+        "jarvis-idle"
+    );
+
+    document.body.classList.add(
+        "jarvis-" + mode
+    );
+
+    if (voiceState) {
+
+        if (mode === "listening") {
+            voiceState.textContent = "LISTENING";
+        }
+
+        else if (mode === "thinking") {
+            voiceState.textContent = "THINKING";
+        }
+
+        else if (mode === "speaking") {
+            voiceState.textContent = "SPEAKING";
+        }
+
+        else {
+            voiceState.textContent = "READY";
+        }
+    }
+
+    if (voiceSystem) {
+        voiceSystem.textContent = mode.toUpperCase();
+    }
+}
+
+
+// ==========================================================
+// STATUS
+// ==========================================================
+
+function setStatus(mainText, subText) {
+
+    if (voiceState) {
+        voiceState.textContent = mainText;
+    }
+
+    if (statusText) {
+        statusText.textContent = subText;
+    }
+}
+
+
+// ==========================================================
+// CHECK BROWSER SUPPORT
+// ==========================================================
 
 const SpeechRecognition =
     window.SpeechRecognition ||
     window.webkitSpeechRecognition;
 
-const speech = window.speechSynthesis;
 
-let listening = false;
-let speaking = false;
-let processing = false;
+if (!SpeechRecognition) {
 
+    console.error(
+        "Speech Recognition is not supported."
+    );
 
-// ==============================
-// JARVIS SPEAK
-// ==============================
+    setStatus(
+        "VOICE NOT SUPPORTED",
+        "Please use Google Chrome or Microsoft Edge."
+    );
 
-function speak(text) {
+    setCoreMode("idle");
 
-    speaking = true;
-
-    speech.cancel();
-
-    const message =
-        new SpeechSynthesisUtterance(text);
-
-    message.lang = "en-US";
-    message.rate = 0.95;
-    message.pitch = 1;
-    message.volume = 1;
-
-    message.onstart = () => {
-
-        status.textContent =
-            "JARVIS SPEAKING";
-
-        subStatus.textContent =
-            "Please wait";
-
-        voiceStatus.textContent =
-            "SPEAKING";
-    };
+}
 
 
-    message.onend = () => {
+// ==========================================================
+// CREATE RECOGNITION
+// ==========================================================
 
-        speaking = false;
+else {
 
-        status.textContent =
-            "JARVIS READY";
+    recognition = new SpeechRecognition();
 
-        subStatus.textContent =
-            "Listening for your next command";
+    // IMPORTANT
+    // false is more reliable with Chrome.
+    recognition.continuous = false;
 
-        voiceStatus.textContent =
-            "READY";
+    recognition.interimResults = true;
 
-        setTimeout(
-            startListening,
-            500
+    recognition.lang = "en-IN";
+
+    recognition.maxAlternatives = 1;
+
+
+    // ======================================================
+    // MICROPHONE STARTED
+    // ======================================================
+
+    recognition.onstart = function () {
+
+        starting = false;
+
+        listening = true;
+
+        setStatus(
+            "LISTENING",
+            "I'm listening, Sir..."
+        );
+
+        setCoreMode("listening");
+
+        updateMicButton(true);
+
+        console.log(
+            "JARVIS MICROPHONE: LISTENING"
         );
     };
 
 
-    speech.speak(message);
+    // ======================================================
+    // SPEECH RESULT
+    // ======================================================
+
+    recognition.onresult = async function (event) {
+
+        if (speaking) {
+            return;
+        }
+
+        if (processing) {
+            return;
+        }
+
+
+        let finalText = "";
+
+        let interimText = "";
+
+
+        for (
+            let i = event.resultIndex;
+            i < event.results.length;
+            i++
+        ) {
+
+            const result =
+                event.results[i];
+
+            const transcript =
+                result[0]
+                    .transcript
+                    .trim();
+
+
+            if (!transcript) {
+                continue;
+            }
+
+
+            if (result.isFinal) {
+
+                finalText +=
+                    transcript + " ";
+
+            }
+
+            else {
+
+                interimText +=
+                    transcript + " ";
+            }
+        }
+
+
+        // --------------------------------------------------
+        // SHOW LIVE SPEECH
+        // --------------------------------------------------
+
+        if (
+            interimText &&
+            statusText
+        ) {
+
+            statusText.textContent =
+                interimText;
+        }
+
+
+        // --------------------------------------------------
+        // FINAL SPEECH
+        // --------------------------------------------------
+
+        const text =
+            finalText
+                .replace(/\s+/g, " ")
+                .trim();
+
+
+        if (!text) {
+            return;
+        }
+
+
+        console.log(
+            "YOU:",
+            text
+        );
+
+
+        // Stop listening while processing.
+        stopRecognition();
+
+
+        processing = true;
+
+
+        addMessage(
+            "YOU",
+            text,
+            "user-message"
+        );
+
+
+        setStatus(
+            "THINKING",
+            "JARVIS is processing your request, Sir..."
+        );
+
+        setCoreMode("thinking");
+
+
+        await sendCommand(text);
+    };
+
+
+    // ======================================================
+    // ERROR
+    // ======================================================
+
+    recognition.onerror = function (event) {
+
+        starting = false;
+
+        listening = false;
+
+        updateMicButton(false);
+
+
+        console.log(
+            "VOICE ERROR:",
+            event.error
+        );
+
+
+        // --------------------------------------------------
+        // NO SPEECH
+        // --------------------------------------------------
+
+        if (
+            event.error === "no-speech"
+        ) {
+
+            if (voiceEnabled && !speaking && !processing) {
+
+                setStatus(
+                    "READY",
+                    "I didn't hear anything. Listening again..."
+                );
+
+                setCoreMode("idle");
+
+                scheduleListen(500);
+            }
+
+            return;
+        }
+
+
+        // --------------------------------------------------
+        // ABORTED
+        // --------------------------------------------------
+
+        if (
+            event.error === "aborted"
+        ) {
+
+            if (
+                voiceEnabled &&
+                !speaking &&
+                !processing
+            ) {
+
+                scheduleListen(500);
+            }
+
+            return;
+        }
+
+
+        // --------------------------------------------------
+        // MICROPHONE ERROR
+        // --------------------------------------------------
+
+        if (
+            event.error === "audio-capture"
+        ) {
+
+            setStatus(
+                "MICROPHONE ERROR",
+                "Check that your microphone is connected."
+            );
+
+            setCoreMode("idle");
+
+            return;
+        }
+
+
+        // --------------------------------------------------
+        // PERMISSION BLOCKED
+        // --------------------------------------------------
+
+        if (
+            event.error === "not-allowed"
+        ) {
+
+            setStatus(
+                "MICROPHONE BLOCKED",
+                "Click the microphone icon in Chrome's address bar and allow access."
+            );
+
+            setCoreMode("idle");
+
+            voiceEnabled = false;
+
+            return;
+        }
+
+
+        // --------------------------------------------------
+        // OTHER ERROR
+        // --------------------------------------------------
+
+        setStatus(
+            "VOICE ERROR",
+            event.error || "Voice recognition error."
+        );
+
+        setCoreMode("idle");
+
+
+        if (
+            voiceEnabled &&
+            !speaking &&
+            !processing
+        ) {
+
+            scheduleListen(1500);
+        }
+    };
+
+
+    // ======================================================
+    // RECOGNITION ENDED
+    // ======================================================
+
+    recognition.onend = function () {
+
+        listening = false;
+
+        starting = false;
+
+        updateMicButton(false);
+
+
+        console.log(
+            "JARVIS MICROPHONE: ENDED"
+        );
+
+
+        if (!voiceEnabled) {
+            return;
+        }
+
+
+        if (speaking) {
+            return;
+        }
+
+
+        if (processing) {
+            return;
+        }
+
+
+        // Automatically listen again.
+        scheduleListen(500);
+    };
 }
 
 
-// ==============================
-// ADD MESSAGE
-// ==============================
+// ==========================================================
+// STOP RECOGNITION
+// ==========================================================
 
-function addMessage(sender, text) {
+function stopRecognition() {
+
+    if (!recognition) {
+        return;
+    }
+
+
+    listening = false;
+
+
+    try {
+
+        recognition.stop();
+
+    }
+
+    catch (error) {
+
+        console.log(
+            "STOP ERROR:",
+            error
+        );
+    }
+
+
+    updateMicButton(false);
+}
+
+
+// ==========================================================
+// START LISTENING
+// ==========================================================
+
+function startListening() {
+
+    if (!recognition) {
+        return;
+    }
+
+
+    if (!voiceEnabled) {
+        return;
+    }
+
+
+    if (speaking) {
+        return;
+    }
+
+
+    if (processing) {
+        return;
+    }
+
+
+    if (listening) {
+        return;
+    }
+
+
+    if (starting) {
+        return;
+    }
+
+
+    starting = true;
+
+
+    try {
+
+        recognition.start();
+
+    }
+
+    catch (error) {
+
+        starting = false;
+
+        console.log(
+            "START ERROR:",
+            error
+        );
+
+
+        scheduleListen(1000);
+    }
+}
+
+
+// ==========================================================
+// SCHEDULE LISTEN
+// ==========================================================
+
+function scheduleListen(delay = 500) {
+
+    if (!recognition) {
+        return;
+    }
+
+
+    if (!voiceEnabled) {
+        return;
+    }
+
+
+    if (speaking) {
+        return;
+    }
+
+
+    if (processing) {
+        return;
+    }
+
+
+    if (listening) {
+        return;
+    }
+
+
+    if (starting) {
+        return;
+    }
+
+
+    if (restartTimer) {
+
+        clearTimeout(
+            restartTimer
+        );
+    }
+
+
+    restartTimer =
+        setTimeout(
+            function () {
+
+                restartTimer = null;
+
+                startListening();
+
+            },
+            delay
+        );
+}
+
+
+// ==========================================================
+// SEND COMMAND TO SERVER
+// ==========================================================
+
+async function sendCommand(text) {
+
+    try {
+
+        console.log(
+            "COMMAND:",
+            text
+        );
+
+
+        const response =
+            await fetch(
+                "/command",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            text: text
+                        })
+                }
+            );
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                "Server returned HTTP " +
+                response.status
+            );
+        }
+
+
+        const data =
+            await response.json();
+
+
+        const answer =
+            data.response ||
+            data.message ||
+            "I'm listening, Sir.";
+
+
+        console.log(
+            "JARVIS:",
+            answer
+        );
+
+
+        addMessage(
+            "JARVIS",
+            answer,
+            "jarvis-message"
+        );
+
+
+        processing = false;
+
+
+        speak(answer);
+
+    }
+
+
+    catch (error) {
+
+        console.error(
+            "COMMAND ERROR:",
+            error
+        );
+
+
+        processing = false;
+
+
+        const answer =
+            "I could not connect to my local system, Sir.";
+
+
+        addMessage(
+            "JARVIS",
+            answer,
+            "jarvis-message"
+        );
+
+
+        speak(answer);
+    }
+}
+
+
+// ==========================================================
+// ADD MESSAGE
+// ==========================================================
+
+function addMessage(
+    speaker,
+    text,
+    className
+) {
+
+    if (!messages) {
+        return;
+    }
+
 
     const message =
         document.createElement("div");
 
-    message.className = "message";
+
+    message.className =
+        "message " + className;
 
 
     const name =
-        document.createElement("strong");
+        document.createElement("span");
 
-    name.textContent = sender;
+
+    name.className =
+        "message-name";
+
+
+    name.textContent =
+        speaker;
 
 
     const content =
-        document.createElement("span");
+        document.createElement("p");
 
-    content.textContent = text;
+
+    content.textContent =
+        text;
 
 
     message.appendChild(name);
 
     message.appendChild(content);
 
-    conversation.appendChild(message);
+    messages.appendChild(message);
 
 
-    conversation.scrollTop =
-        conversation.scrollHeight;
+    messages.scrollTop =
+        messages.scrollHeight;
 }
 
 
-// ==============================
-// VOICE SYSTEM
-// ==============================
+// ==========================================================
+// JARVIS SPEAK
+// ==========================================================
 
-if (!SpeechRecognition) {
+function speak(text) {
 
-    status.textContent =
-        "VOICE NOT SUPPORTED";
+    if (!window.speechSynthesis) {
 
-    subStatus.textContent =
-        "Use Chrome or Edge";
+        speaking = false;
 
-    voiceStatus.textContent =
-        "UNAVAILABLE";
-
-} else {
-
-    const recognition =
-        new SpeechRecognition();
+        processing = false;
 
 
-    recognition.lang = "en-US";
+        setStatus(
+            "READY",
+            "Listening for your command, Sir..."
+        );
 
-    recognition.continuous = false;
-
-    recognition.interimResults = false;
-
-    recognition.maxAlternatives = 3;
+        setCoreMode("idle");
 
 
-    // ==============================
-    // START LISTENING
-    // ==============================
-
-    function startListening() {
-
-        if (
-            listening ||
-            speaking ||
-            processing
-        ) {
-            return;
+        if (voiceEnabled) {
+            scheduleListen(500);
         }
 
+        return;
+    }
 
-        try {
 
-            recognition.start();
+    speaking = true;
 
-        } catch (error) {
 
-            console.log(
-                "Recognition start:",
-                error
+    // Stop microphone while JARVIS speaks.
+    stopRecognition();
+
+
+    setStatus(
+        "SPEAKING",
+        "JARVIS is replying, Sir..."
+    );
+
+    setCoreMode("speaking");
+
+
+    window.speechSynthesis.cancel();
+
+
+    const utterance =
+        new SpeechSynthesisUtterance(text);
+
+
+    utterance.lang = "en-IN";
+
+    utterance.rate = 1.05;
+
+    utterance.pitch = 0.9;
+
+    utterance.volume = 1.0;
+
+
+    // ======================================================
+    // SELECT BEST VOICE
+    // ======================================================
+
+    const voices =
+        window.speechSynthesis.getVoices();
+
+
+    const preferredNames = [
+
+        "Microsoft Ravi",
+        "Microsoft Arjun",
+        "Google UK English Male",
+        "Google US English",
+        "Google English",
+        "Microsoft David",
+        "David"
+
+    ];
+
+
+    let selectedVoice = null;
+
+
+    for (
+        const preferred
+        of preferredNames
+    ) {
+
+        selectedVoice =
+            voices.find(
+                voice =>
+                    voice.name
+                        .toLowerCase()
+                        .includes(
+                            preferred.toLowerCase()
+                        )
             );
+
+
+        if (selectedVoice) {
+            break;
         }
     }
 
 
-    // ==============================
-    // LISTENING STARTED
-    // ==============================
+    // Fallback to English voice.
+    if (!selectedVoice) {
 
-    recognition.onstart = () => {
-
-        listening = true;
-
-
-        status.textContent =
-            "LISTENING...";
-
-
-        subStatus.textContent =
-            "Speak naturally";
+        selectedVoice =
+            voices.find(
+                voice =>
+                    voice.lang
+                        .toLowerCase()
+                        .startsWith("en")
+            );
+    }
 
 
-        voiceStatus.textContent =
-            "LISTENING";
-    };
+    if (selectedVoice) {
+
+        utterance.voice =
+            selectedVoice;
 
 
-    // ==============================
-    // SPEECH RESULT
-    // ==============================
-
-    recognition.onresult =
-        async (event) => {
-
-            listening = false;
-
-            processing = true;
+        console.log(
+            "JARVIS VOICE:",
+            selectedVoice.name
+        );
+    }
 
 
-            let text =
-                event.results[0][0]
-                    .transcript
-                    .trim();
+    // ======================================================
+    // SPEECH FINISHED
+    // ======================================================
 
-
-            if (!text) {
-
-                processing = false;
-
-                startListening();
-
-                return;
-            }
-
+    utterance.onend =
+        function () {
 
             console.log(
-                "Recognized:",
-                text
+                "JARVIS SPEECH FINISHED"
             );
 
 
-            // Remove wake word if present
+            speaking = false;
 
-            const lower =
-                text.toLowerCase();
-
-
-            if (
-                lower.startsWith("jarvis ")
-            ) {
-
-                text =
-                    text.substring(7)
-                        .trim();
-
-            }
+            processing = false;
 
 
-            if (!text) {
-
-                processing = false;
-
-                status.textContent =
-                    "LISTENING...";
-
-                subStatus.textContent =
-                    "Yes?";
-
-                voiceStatus.textContent =
-                    "LISTENING";
-
-
-                setTimeout(
-                    startListening,
-                    500
-                );
-
-                return;
-            }
-
-
-            // Ignore accidental instruction
-
-            if (
-                lower.includes(
-                    "followed by your command"
-                )
-            ) {
-
-                processing = false;
-
-                startListening();
-
-                return;
-            }
-
-
-            addMessage(
-                "YOU",
-                text
+            setStatus(
+                "READY",
+                "Listening for your command, Sir..."
             );
 
-
-            status.textContent =
-                "THINKING...";
+            setCoreMode("idle");
 
 
-            subStatus.textContent =
-                "Processing your command";
+            if (voiceEnabled) {
 
-
-            voiceStatus.textContent =
-                "PROCESSING";
-
-
-            try {
-
-                const result =
-                    await fetch(
-                        "/command",
-                        {
-                            method: "POST",
-
-                            headers: {
-                                "Content-Type":
-                                    "application/json"
-                            },
-
-                            body: JSON.stringify({
-                                text: text
-                            })
-                        }
-                    );
-
-
-                if (!result.ok) {
-
-                    throw new Error(
-                        "Server error " +
-                        result.status
-                    );
-                }
-
-
-                const data =
-                    await result.json();
-
-
-                const response =
-                    data.response ||
-                    "I don't have a response yet.";
-
-
-                addMessage(
-                    "JARVIS",
-                    response
-                );
-
-
-                processing = false;
-
-
-                speak(response);
-
-
-            } catch (error) {
-
-                console.error(error);
-
-
-                processing = false;
-
-
-                status.textContent =
-                    "CONNECTION ERROR";
-
-
-                subStatus.textContent =
-                    "Trying again";
-
-
-                voiceStatus.textContent =
-                    "ERROR";
-
-
-                setTimeout(
-                    startListening,
-                    1500
-                );
+                scheduleListen(600);
             }
         };
 
 
-    // ==============================
-    // RECOGNITION END
-    // ==============================
+    // ======================================================
+    // SPEECH ERROR
+    // ======================================================
 
-    recognition.onend = () => {
-
-        listening = false;
-
-
-        if (
-            !speaking &&
-            !processing
-        ) {
-
-            setTimeout(
-                startListening,
-                500
-            );
-        }
-    };
-
-
-    // ==============================
-    // RECOGNITION ERROR
-    // ==============================
-
-    recognition.onerror =
-        (event) => {
-
-            listening = false;
-
+    utterance.onerror =
+        function (event) {
 
             console.log(
-                "Recognition error:",
+                "SPEECH ERROR:",
                 event.error
             );
 
 
-            if (
-                event.error ===
-                "not-allowed"
-            ) {
+            speaking = false;
 
-                status.textContent =
-                    "MICROPHONE BLOCKED";
+            processing = false;
 
 
-                subStatus.textContent =
-                    "Allow microphone access";
-
-
-                voiceStatus.textContent =
-                    "BLOCKED";
-
-
-                return;
-            }
-
-
-            if (
-                event.error ===
-                "no-speech"
-            ) {
-
-                status.textContent =
-                    "LISTENING...";
-
-
-                subStatus.textContent =
-                    "I am listening";
-
-
-                voiceStatus.textContent =
-                    "LISTENING";
-
-
-                setTimeout(
-                    startListening,
-                    500
-                );
-
-
-                return;
-            }
-
-
-            status.textContent =
-                "VOICE ERROR";
-
-
-            subStatus.textContent =
-                "Trying again";
-
-
-            voiceStatus.textContent =
-                "ERROR";
-
-
-            setTimeout(
-                startListening,
-                1000
+            setStatus(
+                "READY",
+                "Listening for your command, Sir..."
             );
+
+            setCoreMode("idle");
+
+
+            if (voiceEnabled) {
+
+                scheduleListen(700);
+            }
         };
 
 
-    // ==============================
-    // START WHEN PAGE OPENS
-    // ==============================
+    window.speechSynthesis.speak(
+        utterance
+    );
+}
 
-    window.addEventListener(
-        "load",
-        () => {
 
-            setTimeout(
-                startListening,
-                1000
-            );
+// ==========================================================
+// TEXT COMMAND
+// ==========================================================
 
+async function sendTextCommand() {
+
+    if (!commandInput) {
+        return;
+    }
+
+
+    const text =
+        commandInput.value
+            .trim();
+
+
+    if (!text) {
+        return;
+    }
+
+
+    commandInput.value = "";
+
+
+    stopRecognition();
+
+
+    processing = true;
+
+
+    addMessage(
+        "YOU",
+        text,
+        "user-message"
+    );
+
+
+    setStatus(
+        "THINKING",
+        "Processing your request, Sir..."
+    );
+
+    setCoreMode("thinking");
+
+
+    await sendCommand(text);
+}
+
+
+// ==========================================================
+// SEND BUTTON
+// ==========================================================
+
+if (sendButton) {
+
+    sendButton.addEventListener(
+        "click",
+        sendTextCommand
+    );
+}
+
+
+// ==========================================================
+// ENTER KEY
+// ==========================================================
+
+if (commandInput) {
+
+    commandInput.addEventListener(
+        "keydown",
+        function (event) {
+
+            if (event.key === "Enter") {
+
+                event.preventDefault();
+
+                sendTextCommand();
+            }
         }
     );
 }
+
+
+// ==========================================================
+// MICROPHONE BUTTON
+// ==========================================================
+
+if (micButton) {
+
+    micButton.addEventListener(
+        "click",
+        function () {
+
+            console.log(
+                "MIC BUTTON CLICKED"
+            );
+
+
+            // ------------------------------------------------
+            // STOP VOICE
+            // ------------------------------------------------
+
+            if (voiceEnabled) {
+
+                voiceEnabled = false;
+
+                clearTimeout(
+                    restartTimer
+                );
+
+                restartTimer = null;
+
+
+                stopRecognition();
+
+
+                setStatus(
+                    "READY",
+                    "Voice control stopped. Press 🎤 to start."
+                );
+
+                setCoreMode("idle");
+
+
+                updateMicButton(false);
+
+
+                return;
+            }
+
+
+            // ------------------------------------------------
+            // START VOICE
+            // ------------------------------------------------
+
+            voiceEnabled = true;
+
+
+            setStatus(
+                "STARTING",
+                "Starting microphone..."
+            );
+
+
+            setCoreMode("idle");
+
+
+            updateMicButton(true);
+
+
+            startListening();
+        }
+    );
+}
+
+
+// ==========================================================
+// MICROPHONE BUTTON UI
+// ==========================================================
+
+function updateMicButton(active) {
+
+    if (!micButton) {
+        return;
+    }
+
+
+    if (active) {
+
+        micButton.classList.add(
+            "mic-active"
+        );
+
+        micButton.title =
+            "Stop voice control";
+
+    }
+
+    else {
+
+        micButton.classList.remove(
+            "mic-active"
+        );
+
+        micButton.title =
+            "Start voice control";
+    }
+}
+
+
+// ==========================================================
+// LOAD AVAILABLE VOICES
+// ==========================================================
+
+if (window.speechSynthesis) {
+
+    window.speechSynthesis.onvoiceschanged =
+        function () {
+
+            const voices =
+                window.speechSynthesis
+                    .getVoices();
+
+
+            console.log(
+                "AVAILABLE VOICES:",
+                voices.map(
+                    voice => voice.name
+                )
+            );
+        };
+}
+
+
+// ==========================================================
+// PAGE LOAD
+// ==========================================================
+
+window.addEventListener(
+    "load",
+    function () {
+
+        console.log(
+            "================================"
+        );
+
+        console.log(
+            "JARVIS VOICE SYSTEM"
+        );
+
+        console.log(
+            "CLICK MICROPHONE TO START"
+        );
+
+        console.log(
+            "================================"
+        );
+
+
+        voiceEnabled = false;
+
+        listening = false;
+
+        speaking = false;
+
+        processing = false;
+
+        starting = false;
+
+
+        setStatus(
+            "READY",
+            "Press 🎤 to start voice control."
+        );
+
+        setCoreMode("idle");
+
+
+        updateMicButton(false);
+    }
+);

@@ -44,4 +44,5 @@ Thumbs.db
 # Local backup copies
 server_before_ai.py
 server_working_voice_backup.py
-server_backup.py
+server_backup.pybrowser_profile/
+browser_profile/

@@ -1,343 +1,169 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>JARVIS AI Assistant</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JARVIS AI</title>
     <link rel="stylesheet" href="style.css">
-
 </head>
-
 
 <body>
 
-    <div class="app">
+    <div class="stars"></div>
+    <div class="grid"></div>
 
+    <main class="jarvis">
 
-        <!-- ========================= -->
-        <!-- HEADER -->
-        <!-- ========================= -->
+        <!-- TOP BAR -->
+        <header class="top-bar">
 
-        <header class="header">
+            <div class="logo">
+                <div class="logo-circle">J</div>
 
-            <div>
-
-                <h1>J A R V I S</h1>
-
-                <p>
-                    JUST A RATHER VERY INTELLIGENT SYSTEM
-                </p>
-
+                <div>
+                    <h1>JARVIS</h1>
+                    <span>JUST A RATHER VERY INTELLIGENT SYSTEM</span>
+                </div>
             </div>
 
-
             <div class="system-status">
-
-                <span class="status-dot"></span>
-
+                <span class="status-light"></span>
                 SYSTEM ONLINE
-
             </div>
 
         </header>
 
 
+        <!-- MAIN CENTER -->
+        <section class="main-screen">
 
-        <!-- ========================= -->
-        <!-- MAIN -->
-        <!-- ========================= -->
+            <div class="core-container">
 
-        <main class="main">
+                <!-- OUTER ROTATING RINGS -->
+                <div class="core-ring ring-1"></div>
+                <div class="core-ring ring-2"></div>
+                <div class="core-ring ring-3"></div>
 
+                <!-- PARTICLE RING -->
+                <div class="particle-ring">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
 
-            <!-- ========================= -->
-            <!-- LEFT PANEL -->
-            <!-- ========================= -->
+                <!-- CORE -->
+                <div class="core">
 
-            <section class="left-panel">
-
-
-                <!-- JARVIS CORE -->
-
-                <div class="core-card">
-
-                    <div class="core">
-
-                        <div class="core-ring ring-1"></div>
-
-                        <div class="core-ring ring-2"></div>
-
-                        <div class="core-ring ring-3"></div>
-
-                        <div class="core-center">
-                            J
-                        </div>
-
+                    <div class="core-inner">
+                        <div class="core-letter">J</div>
                     </div>
-
-
-                    <h2 id="status">
-                        JARVIS READY
-                    </h2>
-
-
-                    <p id="sub-status">
-                        Say "JARVIS" followed by your command
-                    </p>
 
                 </div>
 
+            </div>
 
 
-                <!-- MICROPHONE -->
+            <!-- STATUS UNDER CORE -->
 
-                <button
-                    id="micButton"
-                    class="mic-button"
+            <div class="voice-status">
+
+                <div id="voiceState">READY</div>
+
+                <div class="voice-bars">
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                    <i></i>
+                </div>
+
+                <p id="statusText">
+                    SAY "JARVIS" TO BEGIN
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- CONVERSATION -->
+
+        <section class="conversation-panel">
+
+            <div class="panel-header">
+                <span>CONVERSATION</span>
+                <span id="connectionStatus">CONNECTED</span>
+            </div>
+
+            <div id="messages" class="messages">
+
+                <div class="message jarvis-message">
+                    <span class="message-name">JARVIS</span>
+                    <p>Hello. Systems are ready.</p>
+                </div>
+
+            </div>
+
+
+            <!-- INPUT -->
+
+            <div class="command-box">
+
+                <input
+                    id="commandInput"
+                    type="text"
+                    placeholder="Type a command..."
+                    autocomplete="off"
                 >
 
+                <button id="sendButton">
+                    SEND
+                </button>
+
+                <button id="micButton" title="Voice">
                     🎤
-
-                    <span>
-                        TALK TO JARVIS
-                    </span>
-
                 </button>
 
+            </div>
 
+        </section>
 
-                <!-- CAMERA -->
 
-                <button
-                    id="cameraButton"
-                    class="camera-button"
-                >
+        <!-- SYSTEM INFORMATION -->
 
-                    📷
+        <section class="system-panel">
 
-                    <span>
-                        CAMERA
-                    </span>
+            <div class="system-item">
+                <span>AI ENGINE</span>
+                <strong>QWEN</strong>
+            </div>
 
-                </button>
+            <div class="system-item">
+                <span>MODE</span>
+                <strong>FAST</strong>
+            </div>
 
-            </section>
+            <div class="system-item">
+                <span>MEMORY</span>
+                <strong>ACTIVE</strong>
+            </div>
 
+            <div class="system-item">
+                <span>VOICE</span>
+                <strong id="voiceSystem">READY</strong>
+            </div>
 
+        </section>
 
-            <!-- ========================= -->
-            <!-- RIGHT PANEL -->
-            <!-- ========================= -->
-
-            <section class="right-panel">
-
-
-                <!-- ========================= -->
-                <!-- CONVERSATION -->
-                <!-- ========================= -->
-
-                <div class="panel">
-
-                    <div class="panel-title">
-
-                        <span>
-                            CONVERSATION
-                        </span>
-
-                        <span>
-                            ● LIVE
-                        </span>
-
-                    </div>
-
-
-                    <div
-                        id="conversation"
-                        class="conversation"
-                    >
-
-                        <div class="message jarvis-message">
-
-                            <strong>
-                                JARVIS
-                            </strong>
-
-                            <span>
-                                Hello. I am JARVIS.
-                                How can I help you?
-                            </span>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- ========================= -->
-                <!-- SYSTEM INFORMATION -->
-                <!-- ========================= -->
-
-                <div class="panel">
-
-                    <div class="panel-title">
-
-                        SYSTEM
-
-                    </div>
-
-
-                    <div class="system-grid">
-
-
-                        <div class="system-item">
-
-                            <span>
-                                VOICE
-                            </span>
-
-                            <strong id="voiceStatus">
-                                READY
-                            </strong>
-
-                        </div>
-
-
-                        <div class="system-item">
-
-                            <span>
-                                MEMORY
-                            </span>
-
-                            <strong>
-                                ONLINE
-                            </strong>
-
-                        </div>
-
-
-                        <div class="system-item">
-
-                            <span>
-                                VISION
-                            </span>
-
-                            <strong>
-                                STANDBY
-                            </strong>
-
-                        </div>
-
-
-                        <div class="system-item">
-
-                            <span>
-                                DEVICES
-                            </span>
-
-                            <strong>
-                                STANDBY
-                            </strong>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- ========================= -->
-                <!-- HOME CONTROL -->
-                <!-- ========================= -->
-
-                <div class="panel">
-
-                    <div class="panel-title">
-
-                        HOME CONTROL
-
-                    </div>
-
-
-                    <div class="device-grid">
-
-
-                        <button
-                            class="device-button"
-                            id="lightButton"
-                        >
-
-                            💡
-
-                            <span>
-                                LIGHT
-                            </span>
-
-                        </button>
-
-
-                        <button
-                            class="device-button"
-                            id="fanButton"
-                        >
-
-                            🌀
-
-                            <span>
-                                FAN
-                            </span>
-
-                        </button>
-
-
-                    </div>
-
-                </div>
-
-            </section>
-
-        </main>
-
-
-
-        <!-- ========================= -->
-        <!-- FOOTER -->
-        <!-- ========================= -->
-
-        <footer>
-
-            JARVIS LOCAL SYSTEM
-
-            <span>
-                •
-            </span>
-
-            Python + Flask
-
-            <span>
-                •
-            </span>
-
-            Voice Interface
-
-        </footer>
-
-
-    </div>
+    </main>
 
 
     <script src="app.js"></script>
 
 </body>
-
 </html>
